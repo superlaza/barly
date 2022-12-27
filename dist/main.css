@@ -104,7 +104,8 @@ path {
 }
 
 .occupancy-bar {
-    width: 100%;
+    /* width: 100%; */
+    width: 300px;
     height: 10px;
     /* display: inline; */
 }
