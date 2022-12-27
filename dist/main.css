@@ -37,8 +37,8 @@ body {
 }
 
 #slider {
-    margin-bottom: 10px;
     height: 30px;
+    margin: 20px 0;
 }
 
 .ui-slider .ui-slider-handle {
