@@ -6,7 +6,7 @@
 
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" integrity="sha256-lSjKY0/srUM9BE3dPm+c4fBo1dky2v27Gdjm2uoZaL0=" crossorigin="anonymous"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jqueryui-touch-punch/0.2.3/jquery.ui.touch-punch.min.js"></script>
-    
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
     integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
     crossorigin=""/>
@@ -62,8 +62,9 @@
 
             <div id="time">12am</div>
         </div>
-        <div id="slider"></div>
-        <div id="map">
+        <div>
+            <div id="map"></div>
+            <div id="slider"></div>
         </div>
         <div id="barlist">
 
@@ -253,6 +254,7 @@
             min: 0,
             max: 23,
             value: 12,
+            // orientation: "vertical",
             slide: function(event, ui) {
                 window.hour = (12+ui.value)%24;
                 update()
@@ -329,6 +331,40 @@
             //     ],
             //     units: 'imperial',
             // }).addTo(map);
+
+            // show user current position
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            };
+
+            function success(pos) {
+                const crd = pos.coords;
+
+                console.log('Your current position is:');
+                console.log(`Latitude : ${crd.latitude}`);
+                console.log(`Longitude: ${crd.longitude}`);
+                console.log(`More or less ${crd.accuracy} meters.`);
+
+                new customCircleMarker(
+                    [crd.latitude, crd.longitude],
+                    {
+                        color: 'rgb(100, 100, 50)',
+                        fillColor: 'black',
+                        fillOpacity: 1,
+                        radius: 8,
+                        weight: 0,
+                    }
+                ).addTo(map).bindPopup("You");
+            }
+
+            function error(err) {
+                console.warn(`ERROR(${err.code}): ${err.message}`);
+            }
+
+            navigator.geolocation.getCurrentPosition(success, error, options);
         });
     </script>
 </html>
