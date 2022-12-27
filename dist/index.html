@@ -1,0 +1,337 @@
+<html>
+    <head>
+    <script src="https://code.jquery.com/jquery-3.6.3.min.js" integrity="sha256-pvPw+upLPUjgMXY0G+8O0xUf+/Im1MZjXxxgOcBQBXU=" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js" integrity="sha256-lSjKY0/srUM9BE3dPm+c4fBo1dky2v27Gdjm2uoZaL0=" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+    crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+    integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+    crossorigin=""></script>
+
+    <link rel="stylesheet" href="./main.css">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    
+    <script src="./jquery.star-rating-svg.js"></script>
+    <link rel="stylesheet" type="text/css" href="star-rating-svg.css">
+
+
+    </head>
+
+    <body>
+        <div data-raty></div>
+        <div class="day-picker">
+            <div class="day-of-week">
+                <input type="radio" id="sunday" name="day-of-week" value="sunday">
+                <label for="sunday">Sunday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="monday" name="day-of-week" value="monday">
+                <label for="monday">Monday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="tuesday" name="day-of-week" value="tuesday">
+                <label for="tuesday">Tuesday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="wednesday" name="day-of-week" value="wednesday">
+                <label for="wednesday">Tuesday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="thursday" name="day-of-week" value="thursday">
+                <label for="thursday">Thursday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="friday" name="day-of-week" value="friday">
+                <label for="friday">Friday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="saturday" name="day-of-week" value="saturday">
+                <label for="saturday">Saturday</label>
+            </div>
+            <div class="day-of-week">
+                <input type="radio" id="saturday" name="day-of-week" value="saturday">
+                <label for="saturday">Sunday</label>
+            </div>
+
+            <div id="time">12am</div>
+        </div>
+        <div id="slider"></div>
+        <div id="map">
+        </div>
+        <div id="barlist">
+
+        </div>
+    </body>
+
+    <script>
+        window.data = [];
+        window.day = null;
+        window.hour = null;
+        window.viewportBounds = null;
+        window.bars = {}
+        window.markers = []
+
+        getOccupancy = (bar, day, hour) => {
+            day = day.charAt(0).toUpperCase()+day.slice(1);
+            if(Object.keys(bar.hours).length != 0){
+                if(hour in bar.hours[day]){
+                    return bar.hours[day][hour]
+                }
+                else{
+                    return 0
+                }
+            }
+            else {
+                return 0
+            }
+        }
+
+        createBar = (id, thumbnail, name, rating, reviews, address, occupancy) => {
+            return `<div id=${id} class="bar">
+                <img class="bar-image" referrerpolicy="no-referrer" src="${thumbnail}" />
+                <div class="bar-details">
+                    <h3 class="bar-name">${name}</h3>
+                    <div class="rating">
+                        <span class="bar-rating">
+                            ${ rating}
+                        </span>
+                        <div class="stars"></div>
+                        <span class="bar-rating">
+                            (${ reviews})
+                        </span>
+                    </div>
+                    <a href="https://maps.google.com?saddr=Current+Location&daddr=${name}" target="_blank">${address}</a>
+                    <div class="occupancy-bar">
+                        <div class="occupancy-bar-fill">
+                        </div>
+                        <div class="percent">
+                            ${occupancy}%
+                        </div>
+                    </div>   
+                </div>
+                 
+            </div>`
+        }
+
+        addBar = (bar, occupancy) => {
+            $("#barlist").append(
+                createBar(
+                    bar.placeId,
+                    bar.thumbnail,
+                    bar.name,
+                    bar.stars,
+                    bar.reviews,
+                    `${bar.street}, ${bar.city}, ${bar.state} ${bar.postalCode}`,
+                    occupancy
+                )
+            )
+
+            $(`#${bar.placeId} .stars`).starRating({
+                starSize: 15,
+                readOnly: true,
+                initialRating: 3.4
+            });
+        }
+
+        sortData = (day, hour, data, reverse=false) => {
+            var sorted = JSON.parse(JSON.stringify(data));
+            sorted.sort((a,b) => {
+                o1 = getOccupancy(a, day, hour)
+                o2 = getOccupancy(b, day, hour)
+
+                if (o1 == o2) {
+                    if (a.stars == b.stars){
+                        return b.reviews - a.reviews
+                    }
+                    else{
+                        return b.stars - a.stars;
+                    }
+                }
+                else {
+                    return (reverse ? -1: 1)*(o2 - o1)
+                }
+            });
+            return sorted
+        }
+
+        getIcon = (percentage, color) => {
+            return L.divIcon({
+                html: '<div style="height: ' + percentage + '%; background-color: ' + color + ';"></div>',
+                iconSize: [20, 20]
+            });
+        }
+
+        getColor = (percentage) => {
+            return `rgb(${255 - percentage*255}, 0, 0)`;
+        }
+
+        convert = (time) => {
+            if (time == 0) {
+                return '12am';
+            }
+
+            if (time < 12) {
+                return time + 'am';
+            }
+            if (time == 12) {
+                return '12pm';
+            }
+            return (time - 12) + 'pm';
+        }
+
+        getCurrentTime = () => {
+            var date = new Date;
+            var day = date.toLocaleDateString('en-US', { weekday: 'long' }).toLocaleLowerCase()
+            var hour = date.getHours() + parseInt(Math.round(date.getMinutes()/60.0));
+
+            return [day, hour]
+        }
+
+        getMapBounds = () => {
+            bounds = map.getBounds()
+            return [
+                [bounds._southWest.lat, bounds._southWest.lng],
+                [bounds._northEast.lat, bounds._northEast.lng]
+            ]
+        }
+
+        buildList = (day, hour, data, limit=20) => {
+            $("#barlist").empty()
+            sorted = sortData(day, hour, data).slice(0,limit)
+            for (bar of sorted) {
+                addBar(bar, getOccupancy(bar, day, hour))
+
+                $(`#${bar.placeId} .occupancy-bar-fill`).width(`${getOccupancy(bar, day, hour)}%`);
+                $(`#${bar.placeId} .percent`).text(`${getOccupancy(bar, day, hour)}%`);
+            }
+        }
+
+        update = () => {
+            data_filtered = data.filter((item) => {
+                return item.coords.lng > window.viewportBounds[0][0] && item.coords.lng < window.viewportBounds[1][0] && item.coords.lat > window.viewportBounds[0][1] && item.coords.lat < window.viewportBounds[1][1]
+            })
+            buildList(window.day, window.hour, data_filtered)
+
+            window.markers.forEach((item) => 
+            {
+                var percentage = getOccupancy(window.bars[item.options.placeId], window.day, window.hour)/100.0;
+                item.setStyle({
+                    fillOpacity: percentage,
+                })
+            })
+        }
+
+        // set day and time
+        var [day, hour] = getCurrentTime()
+        window.day = day
+        window.hour = hour
+
+        $(`#${day}`).prop('checked', true)
+        $(`#time`).text(convert(hour))
+
+        // https://github.com/CartoDB/basemap-styles/blob/dd7e2eaadb4da6ab390a07f17a29826a9cf353d1/README.md
+        var map = L.map('map').setView([28.5384, -81.3789], 13);
+        L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        window.viewportBounds = getMapBounds();
+
+        $('input[type=radio][name=day-of-week]').change(function() {
+            window.day = this.value;
+            update()
+        });
+
+        $('#slider').slider({
+            min: 0,
+            max: 23,
+            value: 12,
+            slide: function(event, ui) {
+                window.hour = (12+ui.value)%24;
+                update()
+                $('#time').text(convert(window.hour)) 
+            }
+        });
+
+        map.on('moveend', function() { 
+            window.viewportBounds = getMapBounds()
+            update()
+        });
+
+        customCircleMarker = L.CircleMarker.extend({
+            options: { 
+                placeId: null,
+            }
+        });
+
+        fetch('./data.json')
+        .then((response) => response.json())
+        .then((_data) => {
+            window.data = _data.data
+
+            window.data.forEach((item) => window.bars[item.placeId] = item)
+
+            window.data = sortData(window.day, window.hour, data)
+
+            data_filtered = data.filter((item) => {
+                return item.coords.lng > window.viewportBounds[0][0] && item.coords.lng < window.viewportBounds[1][0] && item.coords.lat > window.viewportBounds[0][1] && item.coords.lat < window.viewportBounds[1][1]
+            })
+
+            data_filtered.forEach((item) => {
+                
+                var percentage = getOccupancy(item, window.day, window.hour)/100.0;
+                // var c = L.circle(
+                //     [item.coords.lng, item.coords.lat],
+                //     {
+                //         color: 'rgb(100, 100, 50)',
+                //         fillColor: getColor(percentage),
+                //         fillOpacity: 0.5,
+                //         radius: 5
+                //     }).addTo(map);
+
+                var marker = new customCircleMarker(
+                    [item.coords.lng, item.coords.lat],
+                    {
+                        color: 'rgb(100, 100, 50)',
+                        fillColor: 'red',
+                        fillOpacity: percentage,
+                        radius: 8,
+                        weight: 0,
+                        placeId: item.placeId
+                    }).addTo(map).bindPopup(item.name);
+
+                marker.on("mouseover", function() {
+                    this.openPopup();
+                });
+                marker.on("mouseout", function() {
+                    this.closePopup();
+                });
+
+                window.markers.push(marker);
+            })
+
+            buildList(day, hour, data_filtered)
+
+            gh = data.filter((item) => item.name === 'The Guesthouse')[0];
+            tt = data.filter((item) => item.name === "Uncle Lou's Entertainment Hall")[0];
+
+            // L.Routing.control({
+            //     waypoints: [
+            //         L.latLng(gh.coords.lng, gh.coords.lat),
+            //         L.latLng(tt.coords.lng, tt.coords.lat)
+            //     ],
+            //     units: 'imperial',
+            // }).addTo(map);
+        });
+    </script>
+</html>
